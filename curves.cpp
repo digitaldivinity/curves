@@ -6,11 +6,13 @@
 #define X 1600
 #define Y 900
 #define PI  3.14159265358979323846
-#define SCALE 100
+#define SCALE 50
 #define SHIFTX 800
 #define SHIFTY 450
 #define CURVESTEP 500
 #define MOVESTEP 1000
+#define MAXBLINK 1000
+
 struct k_point{
 	double x,y;
 	k_point(){
@@ -71,10 +73,10 @@ struct k_point{
 double t1=-2*PI,t2=2*PI;//множество значений параметра
 
 double x(double t){
-	return t*SCALE+SHIFTX;
+	return (5*cos(t)/t)*SCALE+SHIFTX;
 }
 double y(double t){
-	return exp(t)*SCALE+SHIFTY;
+	return (5*sin(t)/t)*SCALE+SHIFTY;
 }
 //эти производные фальшивые, они могут быть не всегда эффективны
 double dx(double t){
@@ -139,6 +141,14 @@ k_point evoluta(double t){
 	return buf;
 }
 
+void draw_points(k_point * p,int amount,sf::RenderWindow & window){
+	sf::CircleShape shape(2,100);
+	shape.setFillColor(sf::Color::Red);
+	for (int i=0;i<amount;i++){
+		shape.setPosition(p[i].x-2,p[i].y-2);
+		window.draw(shape);
+	}
+}
 
 void draw_line(k_point p1,k_point p2,sf::RenderWindow & window, sf::Color clr){
 	sf::Vertex pts[2];
@@ -149,21 +159,33 @@ void draw_line(k_point p1,k_point p2,sf::RenderWindow & window, sf::Color clr){
 	window.draw(pts, 2, sf::Lines);
 }
 
+bool blink(k_point a,k_point b){
+	if (module(a-b)>MAXBLINK) return true;
+	else return false;
+}
+
 void draw_curve(sf::RenderWindow & window){
 	k_point buf1,buf2=curve(t1);
+	k_point e1,e2=evoluta(t1);
 	double t=t1;
 	double step=(t2-t1)/CURVESTEP;
 	while (1){
 		buf1=curve(t);
-		draw_line(buf1,buf2,window,sf::Color::Black);
+		e1=evoluta(t);
+		if (!blink(buf1,buf2)) draw_line(buf1,buf2,window,sf::Color::Black);
+		if (!blink(e1,e2)) draw_line(e1,e2,window,sf::Color::Green);
 		buf2=buf1;
+		e2=e1;
 		t=t+step;
 		if (t>=t2) {
 			buf1=curve(t2);
-			draw_line(buf1,buf2,window,sf::Color::Black);
+			e1=evoluta(t2);
+			if (!blink(buf1,buf2)) draw_line(buf1,buf2,window,sf::Color::Black);
+			if (!blink(e1,e2)) draw_line(e1,e2,window,sf::Color::Green);
 			break;
 		}
 	}
+	
 }
 
 void draw_evoluta(sf::RenderWindow & window){
@@ -199,9 +221,10 @@ void draw_text(const char * str,sf::RenderWindow & window,sf::Color clr,int x, i
 }
 
 void dnd(sf::RenderWindow & window,double t,char * str,int speed){
+	k_point buf=evoluta(t);
 	window.clear(sf::Color::White);
 	draw_curve(window);
-	draw_evoluta(window);
+	draw_points(&buf,1,window);
 	draw_line(curve(t),norm(dcurve(t))+curve(t),window,sf::Color::Red);
 	draw_line(curve(t),curve(t)+norm(gen_norm(dcurve(t))),window,sf::Color::Magenta);
 	sprintf(str,"Speed=%d  t=%lf  Krivizna=%lf",speed,t,krivizna(t));
