@@ -72,11 +72,17 @@ struct k_point{
 
 double t1=-2*PI,t2=2*PI;//множество значений параметра
 
+//параметры сдвига
+int shiftx=X/2;
+int shifty=Y/2;
+//размер
+int scale=SCALE;
+
 double x(double t){
-	return (5*cos(t)/t)*SCALE+SHIFTX;
+	return (t)*scale+shiftx;
 }
 double y(double t){
-	return (5*sin(t)/t)*SCALE+SHIFTY;
+	return (exp(t))*scale+shifty;
 }
 //эти производные фальшивые, они могут быть не всегда эффективны
 double dx(double t){
@@ -111,7 +117,7 @@ k_point ddcurve(double t){
 }
 
 k_point norm(k_point p){
-	return p*SCALE/sqrt(p.x*p.x+p.y*p.y);
+	return p*scale/sqrt(p.x*p.x+p.y*p.y);
 }
 //вектор главной нормали, не нормированный
 //параметр - вектор касательной
@@ -130,8 +136,7 @@ double vecmul(k_point p,k_point l){
 }
 
 double krivizna(double t){
-	return SCALE*vecmul(dcurve(t),ddcurve(t))/pow(module(dcurve(t)),3);
-	
+	return scale*vecmul(dcurve(t),ddcurve(t))/pow(module(dcurve(t)),3);
 }
 
 k_point evoluta(double t){
@@ -215,7 +220,6 @@ void draw_text(const char * str,sf::RenderWindow & window,sf::Color clr,int x, i
 	text.setString(str);
 	text.setCharacterSize(50);//width 25
 	text.setColor(sf::Color::Black);
-	//text.setStyle(sf::Text::Bold);
 	text.setPosition(x,y);
 	window.draw(text);
 }
@@ -227,28 +231,44 @@ void dnd(sf::RenderWindow & window,double t,char * str,int speed){
 	draw_points(&buf,1,window);
 	draw_line(curve(t),norm(dcurve(t))+curve(t),window,sf::Color::Red);
 	draw_line(curve(t),curve(t)+norm(gen_norm(dcurve(t))),window,sf::Color::Magenta);
-	sprintf(str,"Speed=%d  t=%lf  Krivizna=%lf",speed,t,krivizna(t));
+	sprintf(str,"Speed=%d  t=%lf Curvature=%lf",speed,t,krivizna(t));
 	draw_text(str,window,sf::Color::Black,100,750);
+	sprintf(str,"Shift x = %d ; Shift y = %d ; Scale = %d",shiftx-X/2,shifty-Y/2,scale);
+	draw_text(str,window,sf::Color::Black,100,800);
 	window.display();
 }
 
 int main(){
+	int turn=0;
 	char str[32];
 	double t=t1;
 	double step=(t2-t1)/MOVESTEP;
 	int speed=1;
 	sf::RenderWindow window(sf::VideoMode(X,Y),"Curves");
 	window.clear(sf::Color::White);
+	dnd(window,t,str,speed);
 	window.display();
 	while (window.isOpen()){
 		sf::Event event;
 		while (window.pollEvent(event)){
 			if (event.type == sf::Event::Closed) window.close();//закрытие
-			else if (event.type ==sf::Event:: MouseButtonPressed){
-				window.clear(sf::Color::White);
-				draw_curve(window);
-				draw_text("Hello tovarisch",window,sf::Color::Red,100,750);
-				window.display();
+			else if (event.type ==sf::Event:: MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left){
+				int sxb=shiftx;
+				int syb=shifty;
+				while (!turn){
+					sf::Event mv;
+					while (window.pollEvent(mv)){
+						if (mv.type == sf::Event::MouseMoved){
+							shiftx=sxb-(event.mouseButton.x-mv.mouseMove.x);
+							shifty=syb-(event.mouseButton.y-mv.mouseMove.y);
+							dnd(window,t,str,speed);
+						}
+						else if (mv.type == sf:: Event::MouseButtonReleased){
+							turn=1;
+						}
+					}
+				}
+				turn=0;
 			}
 			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Right){
 				if (t+step*speed<t2){//можно
@@ -268,6 +288,32 @@ int main(){
 			}
 			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Down){
 				if (speed>1) speed--;
+				dnd(window,t,str,speed);
+			}
+			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::W){
+				shifty+=speed*SCALE/10;
+				dnd(window,t,str,speed);
+			}
+			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::A){
+				shiftx+=speed*SCALE/10;
+				dnd(window,t,str,speed);
+			}
+			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::S){
+				shifty-=speed*SCALE/10;
+				dnd(window,t,str,speed);
+			}
+			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::D){
+				shiftx-=speed*SCALE/10;
+				dnd(window,t,str,speed);
+			}
+			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space){
+				shiftx=X/2;
+				shifty=Y/2;
+				dnd(window,t,str,speed);
+			}
+			else if (event.type == sf::Event::MouseWheelMoved){
+				if (scale>3 || event.mouseWheel.delta>0) scale+=3*event.mouseWheel.delta;
+				//scale*=(event.mouseWheel.delta>0?2:0.5);
 				dnd(window,t,str,speed);
 			}
 		}
