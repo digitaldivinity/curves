@@ -3,8 +3,13 @@
 #include <math.h>
 #include <SFML/Graphics.hpp>
 
-#define X 1600
-#define Y 900
+
+#define X 5*sin(t)
+#define Y cos(t)
+
+
+#define RX 1600
+#define RY 900
 #define PI  3.14159265358979323846
 #define SCALE 50
 #define SHIFTX 800
@@ -73,16 +78,16 @@ struct k_point{
 double t1=-2*PI,t2=2*PI;//множество значений параметра
 
 //параметры сдвига
-int shiftx=X/2;
-int shifty=Y/2;
+int shiftx=RX/2;
+int shifty=RY/2;
 //размер
 int scale=SCALE;
 
 double x(double t){
-	return (t)*scale+shiftx;
+	return (X)*scale+shiftx;
 }
 double y(double t){
-	return (exp(t))*scale+shifty;
+	return (Y)*scale+shifty;
 }
 //эти производные фальшивые, они могут быть не всегда эффективны
 double dx(double t){
@@ -192,7 +197,7 @@ void draw_curve(sf::RenderWindow & window){
 	}
 	
 }
-
+/*
 void draw_evoluta(sf::RenderWindow & window){
 	k_point buf1,buf2=evoluta(t1);
 	double t=t1;
@@ -209,7 +214,7 @@ void draw_evoluta(sf::RenderWindow & window){
 		}
 	}
 }
-
+*/
 
 
 void draw_text(const char * str,sf::RenderWindow & window,sf::Color clr,int x, int y){
@@ -226,14 +231,21 @@ void draw_text(const char * str,sf::RenderWindow & window,sf::Color clr,int x, i
 
 void dnd(sf::RenderWindow & window,double t,char * str,int speed){
 	k_point buf=evoluta(t);
+	k_point buf2=curve(t);
+	double rad=module(buf-buf2);
+	sf::CircleShape c(rad,100);
+	c.setPosition(buf.x-rad,buf.y-rad);
+	c.setOutlineColor(sf::Color::Black);
+	c.setOutlineThickness(1.5);
 	window.clear(sf::Color::White);
+	window.draw(c);
 	draw_curve(window);
 	draw_points(&buf,1,window);
 	draw_line(curve(t),norm(dcurve(t))+curve(t),window,sf::Color::Red);
 	draw_line(curve(t),curve(t)+norm(gen_norm(dcurve(t))),window,sf::Color::Magenta);
 	sprintf(str,"Speed=%d  t=%lf Curvature=%lf",speed,t,krivizna(t));
 	draw_text(str,window,sf::Color::Black,100,750);
-	sprintf(str,"Shift x = %d ; Shift y = %d ; Scale = %d",shiftx-X/2,shifty-Y/2,scale);
+	sprintf(str,"Shift x = %d ; Shift y = %d ; Scale = %d",shiftx-RX/2,shifty-RY/2,scale);
 	draw_text(str,window,sf::Color::Black,100,800);
 	window.display();
 }
@@ -244,7 +256,7 @@ int main(){
 	double t=t1;
 	double step=(t2-t1)/MOVESTEP;
 	int speed=1;
-	sf::RenderWindow window(sf::VideoMode(X,Y),"Curves");
+	sf::RenderWindow window(sf::VideoMode(RX,RY),"Curves");
 	window.clear(sf::Color::White);
 	dnd(window,t,str,speed);
 	window.display();
@@ -307,8 +319,8 @@ int main(){
 				dnd(window,t,str,speed);
 			}
 			else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space){
-				shiftx=X/2;
-				shifty=Y/2;
+				shiftx=RX/2;
+				shifty=RY/2;
 				dnd(window,t,str,speed);
 			}
 			else if (event.type == sf::Event::MouseWheelMoved){
